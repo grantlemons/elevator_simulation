@@ -42,6 +42,10 @@ let rec create_calls = function
   | p :: rem -> PriorityQueue.insert (create_calls rem) min_int (Call (p, random_floor ()))
 ;;
 
+let people = create_people 200;;
 let elevators = create_elevators 6;;
-let () = run_simulation (create_calls @@ create_people 200) elevators top_floor;;
-let () = print_float @@ max_elapsed elevators; print_endline "s";;
+let () = run_simulation (create_calls people) elevators top_floor;;
+let () = print_string "Total time: "; print_float @@ max_elapsed elevators; print_endline "s";;
+let () = print_string "Max wait time: "; print_float @@ max_total_wait people; print_endline "s";;
+let () = print_string "Max call wait: "; print_float @@ max_call_wait people; print_endline "s";;
+let () = print_string "Max time in elevator: "; print_float @@ max_exit_wait people; print_endline "s";;
