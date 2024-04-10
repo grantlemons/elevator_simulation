@@ -41,7 +41,7 @@ let rec create_elevators = function
 
 let rec create_calls = function
   | [] -> PriorityQueue.Empty 0.
-  | p :: rem -> PriorityQueue.insert (create_calls rem) (Call (random_time(), p, random_floor ()))
+  | p :: rem -> PriorityQueue.insert (Call (random_time(), p, random_floor ())) (create_calls rem) 
 ;;
 
 let people = create_people 2;;

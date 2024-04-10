@@ -17,8 +17,8 @@ let rec run_simulation ?(delayed_calls=[]) queue elevators top_floor =
   let (time, rem_queue) = PriorityQueue.remove_min queue in
 
   let insert_event = function
-    | Board _ as event -> run_simulation (PriorityQueue.insert rem_queue event) elevators top_floor ~delayed_calls:delayed_calls
-    | Exit _ as event -> run_simulation (PriorityQueue.insert rem_queue event) elevators top_floor ~delayed_calls:delayed_calls
+    | Board _ as event -> run_simulation (PriorityQueue.insert event rem_queue) elevators top_floor ~delayed_calls:delayed_calls
+    | Exit _ as event -> run_simulation (PriorityQueue.insert event rem_queue) elevators top_floor ~delayed_calls:delayed_calls
     | _ -> ()
   in
 
@@ -80,7 +80,7 @@ let rec run_simulation ?(delayed_calls=[]) queue elevators top_floor =
     in
 
     List.iter toggle_direction elevators;
-    run_simulation (List.fold_left (fun q call -> PriorityQueue.insert q call) queue delayed_calls) elevators top_floor
+    run_simulation (List.fold_left (fun q call -> PriorityQueue.insert call q) queue delayed_calls) elevators top_floor
   in
 
   let event_handler = function
