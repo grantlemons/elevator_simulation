@@ -1,3 +1,2 @@
 (library
- (name elevator_simulator)
- (libraries core))
+ (name elevator_simulator))
