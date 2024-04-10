@@ -80,7 +80,7 @@ let rec run_simulation ?(delayed_calls=[]) queue elevators top_floor =
     in
 
     List.iter toggle_direction elevators;
-    run_simulation (List.fold_left (fun q call -> PriorityQueue.insert q call) PriorityQueue.Empty delayed_calls) elevators top_floor
+    run_simulation (List.fold_left (fun q call -> PriorityQueue.insert q call) queue delayed_calls) elevators top_floor
   in
 
   let event_handler = function
@@ -90,7 +90,7 @@ let rec run_simulation ?(delayed_calls=[]) queue elevators top_floor =
   in
 
   match (queue, delayed_calls) with
-  | (Empty, []) -> ()
-  | (Empty, _) -> toggle_handler ()
+  | (Empty _, []) -> ()
+  | (Empty _, _) -> toggle_handler ()
   | (Node(_, event, _, _, _), _) -> event_handler event
 ;;

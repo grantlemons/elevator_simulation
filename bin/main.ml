@@ -40,12 +40,12 @@ let rec create_elevators = function
 ;;
 
 let rec create_calls = function
-  | [] -> PriorityQueue.Empty
+  | [] -> PriorityQueue.Empty 0.
   | p :: rem -> PriorityQueue.insert (create_calls rem) (Call (random_time(), p, random_floor ()))
 ;;
 
-let people = create_people 100;;
-let elevators = create_elevators 6;;
+let people = create_people 2;;
+let elevators = create_elevators 1;;
 let () = run_simulation (create_calls people) elevators top_floor;;
 let () = print_string "Max total wait: "; print_float @@ max_total_wait people; print_endline "s";;
 let () = print_string "Max call wait: "; print_float @@ max_call_wait people; print_endline "s";;
