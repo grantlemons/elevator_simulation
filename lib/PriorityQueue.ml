@@ -1,55 +1,9 @@
-type time = float
+open Types
+
 type priority = time
-type floor = int
-type direction =
-  | Up
-  | Down
-
-type person = {
-  id : int;
-  destination : floor;
-  board_exit_duration : time;
-  mutable call_time : time option;
-  mutable board_time : time option;
-  mutable exit_time : time option;
-}
-
-type elevator = {
-  capacity : int;
-  travel_time : floor -> floor -> time;
-  mutable current_headcount : int;
-  mutable floor : floor;
-  mutable direction : direction;
-}
-
-type event =
-  | Call of time * person * floor
-  | Board of person * elevator * floor
-  | Exit of person * elevator * floor
-
 type pqueue =
   | Empty
   | Node of priority * event * pqueue * pqueue * bool ref
-
-let extract_person = function
-  | Call (_, person, _) -> person
-  | Board (person, _, _) -> person
-  | Exit (person, _, _) -> person
-
-let extract_elevator = function
-  | Call _ -> None
-  | Board (_, elevator, _) -> Some elevator
-  | Exit (_, elevator, _) -> Some elevator
-
-let extract_floor = function
-  | Call (_, _, floor) -> floor
-  | Board (_, _, floor) -> floor
-  | Exit (_, _, floor) -> floor
-
-let extract_time = function
-  | Call (time, _, _) -> Some time
-  | Board (_, _, _) -> None
-  | Exit (_, _, _) -> None
 
 let rec count = function
   | Node (_, _, left, right, { contents = true }) -> 1 + count left + count right
@@ -73,8 +27,8 @@ let max_pair pair1 pair2 = match (pair1, pair2) with
   | _ -> pair1
 
 let floor_occurs_sooner direction floor other = match direction with
-  | Up -> floor <= other
-  | Down -> floor >= other
+  | Up -> floor < other
+  | Down -> floor > other
 ;;
 
 let get_prev elevator floor backup queue = 
@@ -87,21 +41,21 @@ let get_prev elevator floor backup queue =
   in
   internal queue
 
-let rec remove_min =
+let rec remove_min queue =
   let rec remove = function
     | Empty as e -> e
     | Node (_, _, left, Empty, _) -> left
     | Node (_, _, Empty, right, _) -> right
-    | Node (_, _, (Node (lprio, left_element, _, _, _) as left),
-                 (Node (rprio, right_element, _, _, _) as right), _) ->
+    | Node (_, _, (Node (lprio, left_element, _, _, lvalid) as left),
+                 (Node (rprio, right_element, _, _, rvalid) as right), _) ->
       if lprio <= rprio
-      then Node (lprio, left_element, remove left, right, ref true)
-      else Node (rprio, right_element, left, remove right, ref true)
+      then Node (lprio, left_element, remove left, right, lvalid)
+      else Node (rprio, right_element, left, remove right, rvalid)
   in
-  function
+  match remove queue with
     | Empty as e -> e
-    | Node (_, _, _, _, { contents = false }) as node -> remove_min @@ remove node
-    | Node (_, _, _, _, { contents = true }) as node -> remove node
+    | Node (_, _, _, _, { contents = false }) as node -> remove_min node
+    | Node (_, _, _, _, { contents = true }) as node -> node
 
 let calc_priority element backup queue = match element with
   | Call (time, _, _) -> time
@@ -112,8 +66,8 @@ let calc_priority element backup queue = match element with
       | (p, None) -> p +. elevator.travel_time elevator.floor (extract_floor element)
   end
 
-let insert ?(priority) ?(backup=0.) element queue = 
-  let prio = Option.value priority ~default:(calc_priority element backup queue) in
+let insert ?(prio_override) ?(backup=0.) element queue = 
+  let prio = Option.value prio_override ~default:(calc_priority element backup queue) in
 
   let rec insert_value ?(valid_node=ref true) prio element = function
     | Empty -> Node (prio, element, Empty, Empty, valid_node)

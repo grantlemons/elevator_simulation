@@ -1,6 +1,6 @@
 open Elevator_simulator
-open Elevator_simulator.PriorityQueue
 open Elevator_simulator.Elevator
+open Elevator_simulator.Types
 
 let top_floor = 20;;
 let simulation_soft_stop_time = 600.;;
@@ -44,8 +44,9 @@ let rec create_calls = function
   | p :: rem -> PriorityQueue.insert (Call (random_time(), p, random_floor ())) (create_calls rem) 
 ;;
 
-let people = create_people 3;;
+let people = create_people 10;;
 let elevators = create_elevators 1;;
+let () = List.iteri (fun i e -> print_string "Elevator "; print_int (i + 1); print_string ": <"; print_string @@ dir_to_string e.direction; print_string "> ("; print_int e.floor; print_endline ")") elevators
 let () = run_simulation (create_calls people) elevators top_floor;;
 let () = print_string "Max total wait: "; print_float @@ max_total_wait people; print_endline "s";;
 let () = print_string "Max call wait: "; print_float @@ max_call_wait people; print_endline "s";;

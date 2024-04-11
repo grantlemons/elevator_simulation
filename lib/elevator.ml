@@ -1,13 +1,9 @@
+open Types
 open PriorityQueue
 
 let max_call_wait people = List.fold_left (fun acc x -> max acc (Option.get x.board_time -. Option.get x.call_time)) 0. people;;
 let max_exit_wait people = List.fold_left (fun acc x -> max acc (Option.get x.exit_time -. Option.get x.board_time)) 0. people;;
 let max_total_wait people = List.fold_left (fun acc x -> max acc (Option.get x.exit_time -. Option.get x.call_time)) 0. people;;
-let direction s e = if e > s then Up else Down;;
-let dir_to_string = function
-  | Up -> "Up"
-  | Down -> "Down"
-;;
 
 let rec run_simulation ?(delayed_calls=[]) ?(time=0.) queue elevators top_floor =
   let time = match queue with
@@ -85,7 +81,10 @@ let rec run_simulation ?(delayed_calls=[]) ?(time=0.) queue elevators top_floor 
     print_int person.id;
     print_string " Called (";
     print_int floor;
-    print_endline ")";
+    print_string ") <";
+    print_string @@ dir_to_string @@ direction floor person.destination;
+    print_endline ">";
+
     person.call_time <- Some time;
 
     List.sort (fun e1 e2 -> Int.compare e1.current_headcount e2.current_headcount) elevators
@@ -112,7 +111,7 @@ let rec run_simulation ?(delayed_calls=[]) ?(time=0.) queue elevators top_floor 
     print_endline " Turned Around!";
 
     List.iter toggle_direction elevators;
-    run_simulation (List.fold_left (fun q call -> PriorityQueue.insert ~backup:time call q) queue delayed_calls) elevators top_floor ~time:time
+    run_simulation (List.fold_left (fun q call -> PriorityQueue.insert call q ~prio_override:time) queue delayed_calls) elevators top_floor ~time:time
   in
 
   let event_handler = function
