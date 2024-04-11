@@ -5,9 +5,15 @@ type direction =
   | Down
 
 let direction s e = if e > s then Up else Down;;
+let dir_eol top_floor = function
+  | Up -> top_floor
+  | Down -> 0
 let dir_to_string = function
   | Up -> "Up"
   | Down -> "Down"
+let dir_opposite = function
+  | Up -> Down
+  | Down -> Up
 
 type person = {
   id : int;
@@ -30,23 +36,28 @@ type event =
   | Call of time * person * floor
   | Board of person * elevator * floor
   | Exit of person * elevator * floor
+  | ChangeDirection of elevator * direction * floor
 
 let extract_person = function
-  | Call (_, person, _) -> person
-  | Board (person, _, _) -> person
-  | Exit (person, _, _) -> person
+  | Call (_, person, _) -> Some person
+  | Board (person, _, _) -> Some person
+  | Exit (person, _, _) -> Some person
+  | ChangeDirection _ -> None
 
 let extract_elevator = function
   | Call _ -> None
   | Board (_, elevator, _) -> Some elevator
   | Exit (_, elevator, _) -> Some elevator
+  | ChangeDirection (elevator, _, _) -> Some elevator
 
 let extract_floor = function
   | Call (_, _, floor) -> floor
   | Board (_, _, floor) -> floor
   | Exit (_, _, floor) -> floor
+  | ChangeDirection (_, _, floor) -> floor
 
 let extract_time = function
   | Call (time, _, _) -> Some time
-  | Board (_, _, _) -> None
-  | Exit (_, _, _) -> None
+  | Board _ -> None
+  | Exit _ -> None
+  | ChangeDirection _ -> None

@@ -18,7 +18,7 @@ let rec run_simulation ?(delayed_calls=[]) ?(time=0.) queue elevators top_floor 
     | _ -> ()
   in
 
-  let insert_delayed_call call = run_simulation rem_queue elevators top_floor ~delayed_calls:(call :: delayed_calls) ~time:time in
+  let insert_delayed_call call = run_simulation (List.fold_left (fun acc elevator -> PriorityQueue.insert ~backup:time (ChangeDirection (elevator, dir_opposite elevator.direction, dir_eol top_floor elevator.direction)) acc) rem_queue elevators) elevators top_floor ~delayed_calls:(call :: delayed_calls) ~time:time in
 
   let goto_floor elevator floor = 
     elevator.floor <- floor
@@ -101,27 +101,31 @@ let rec run_simulation ?(delayed_calls=[]) ?(time=0.) queue elevators top_floor 
 
   in
 
-  let toggle_handler () =
-    let toggle_direction elevator = match elevator.direction with
-      | Up -> elevator.direction <- Down; goto_floor elevator top_floor
-      | Down -> elevator.direction <- Up; goto_floor elevator 0
-    in
+  let change_dir_handler elevator direction floor = if direction != elevator.direction then
+    begin
+      print_float time;
+      print_string " Turned Around! <";
+      print_string @@ dir_to_string elevator.direction;
+      print_string "> <";
+      elevator.direction <- direction;
+      print_string @@ dir_to_string elevator.direction;
+      print_endline ">";
 
-    print_float time;
-    print_endline " Turned Around!";
-
-    List.iter toggle_direction elevators;
-    run_simulation (List.fold_left (fun q call -> PriorityQueue.insert call q ~prio_override:time) queue delayed_calls) elevators top_floor ~time:time
+      goto_floor elevator floor;
+      run_simulation (List.fold_left (fun q call -> PriorityQueue.insert call q ~prio_override:time) rem_queue delayed_calls) elevators top_floor ~time:time
+    end else
+      run_simulation rem_queue elevators top_floor
   in
 
   let event_handler = function
-    | Call(_, person, floor) -> call_handler person floor
-    | Board(person, elevator, floor) -> board_handler person elevator floor
-    | Exit(person, elevator, floor) -> exit_handler person elevator floor
+    | Call (_, person, floor) -> call_handler person floor
+    | Board (person, elevator, floor) -> board_handler person elevator floor
+    | Exit (person, elevator, floor) -> exit_handler person elevator floor
+    | ChangeDirection (elevator, direction, floor) -> change_dir_handler elevator direction floor
   in
 
   match (queue, delayed_calls) with
   | (Empty, []) -> ()
-  | (Empty, _) -> toggle_handler ()
+  | (Empty, _) -> ()
   | (Node(_, event, _, _, _), _) -> event_handler event
 ;;
