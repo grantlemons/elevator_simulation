@@ -75,7 +75,7 @@ let max_pair pair1 pair2 = match (pair1, pair2) with
 let rec get_prev ?(prev) elevator floor queue = match (queue, prev) with
   | (Empty t, _) -> (t, None)
   | (Node (_, e, _, _, { contents = true }), Some prev)
-    when Option.equal (==) (extract_elevator e) (Some elevator) && (extract_floor e) > floor -> prev
+    when Option.equal (==) (extract_elevator e) (Some elevator) && (extract_floor e) >= floor -> prev
   | (Node (p, e, l, r, { contents = true }), _)
     when Option.equal (==) (extract_elevator e) (Some elevator)
     -> max_pair (get_prev elevator floor l ~prev:(p, Some e)) (get_prev elevator floor r ~prev:(p, Some e))

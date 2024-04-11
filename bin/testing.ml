@@ -70,10 +70,46 @@ let people = [|{
     board_time = None;
     exit_time = None;
 }
+;{
+    id = 4;
+    destination = top_floor;
+    board_exit_duration = (Random.float 16.) +. 4.;
+    call_time = None;
+    board_time = None;
+    exit_time = None;
+}
+;{
+    id = 5;
+    destination = top_floor;
+    board_exit_duration = (Random.float 16.) +. 4.;
+    call_time = None;
+    board_time = None;
+    exit_time = None;
+}
+;{
+    id = 5;
+    destination = top_floor;
+    board_exit_duration = (Random.float 16.) +. 4.;
+    call_time = None;
+    board_time = None;
+    exit_time = None;
+}
+;{
+    id = 7;
+    destination = top_floor;
+    board_exit_duration = (Random.float 16.) +. 4.;
+    call_time = None;
+    board_time = None;
+    exit_time = None;
+}
 |]
 ;;
 
 let queue = Empty 0.
-  |> insert (Board (people.(0), elevator, 0))
-  |> insert (Board (people.(2), elevator, 2))
-  |> insert (Board (people.(1), elevator, 5))
+  |> insert (Board (people.(0), elevator, 1))
+  |> insert (Board (people.(1), elevator, 2))
+  |> insert (Board (people.(2), elevator, 3))
+  |> insert (Board (people.(3), elevator, 3))
+  |> insert (Board (people.(4), elevator, 4))
+  |> insert (Board (people.(5), elevator, 6))
+  |> insert (Board (people.(6), elevator, 7))
