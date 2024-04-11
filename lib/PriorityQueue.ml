@@ -28,7 +28,7 @@ type event =
   | Exit of person * elevator * floor
 
 type pqueue =
-  | Empty of time
+  | Empty
   | Node of priority * event * pqueue * pqueue * bool ref
 
 let extract_person = function
@@ -72,21 +72,26 @@ let max_pair pair1 pair2 = match (pair1, pair2) with
   | ((p1, _), (p2, _)) when p2 > p1 -> pair2
   | _ -> pair1
 
-let rec get_prev ?(prev) elevator floor queue = match (queue, prev) with
-  | (Empty t, _) -> (t, None)
-  | (Node (_, e, _, _, { contents = true }), Some prev)
-    when Option.equal (==) (extract_elevator e) (Some elevator) && (extract_floor e) >= floor -> prev
-  | (Node (p, e, l, r, { contents = true }), _)
-    when Option.equal (==) (extract_elevator e) (Some elevator)
-    -> max_pair (get_prev elevator floor l ~prev:(p, Some e)) (get_prev elevator floor r ~prev:(p, Some e))
-  | (Node (_, _, l, r, _), Some prev) -> max_pair (get_prev elevator floor l ~prev:prev) (get_prev elevator floor r ~prev:prev)
-  | (Node (_, _, l, r, _), None) -> max_pair (get_prev elevator floor l) (get_prev elevator floor r)
+let floor_occurs_sooner direction floor other = match direction with
+  | Up -> floor <= other
+  | Down -> floor >= other
+;;
+
+let get_prev elevator floor backup queue = 
+  let elevator_match event = Option.equal (==) (extract_elevator event) (Some elevator) in
+  let valid_node event = elevator_match event && floor_occurs_sooner elevator.direction (extract_floor event) floor in
+  let rec internal = function
+      | Node (p, e, l, r, { contents = true }) when valid_node e -> max_pair (p, Some e) @@ max_pair (internal l) (internal r)
+      | Node (_, _, l, r, _) -> max_pair (internal l) (internal r)
+      | Empty -> (backup, None)
+  in
+  internal queue
 
 let rec remove_min =
   let rec remove = function
-    | Empty _ as e -> e
-    | Node (_, _, left, Empty _, _) -> left
-    | Node (_, _, Empty _, right, _) -> right
+    | Empty as e -> e
+    | Node (_, _, left, Empty, _) -> left
+    | Node (_, _, Empty, right, _) -> right
     | Node (_, _, (Node (lprio, left_element, _, _, _) as left),
                  (Node (rprio, right_element, _, _, _) as right), _) ->
       if lprio <= rprio
@@ -94,37 +99,42 @@ let rec remove_min =
       else Node (rprio, right_element, left, remove right, ref true)
   in
   function
-    | Empty t as e -> (t, e)
+    | Empty as e -> e
     | Node (_, _, _, _, { contents = false }) as node -> remove_min @@ remove node
-    | Node (p, _, _, _, { contents = true }) as node -> (p, remove node)
+    | Node (_, _, _, _, { contents = true }) as node -> remove node
 
-let calc_priority element queue = match element with
+let calc_priority element backup queue = match element with
   | Call (time, _, _) -> time
   | _ -> begin
     let elevator = Option.get @@ extract_elevator element in
-    match get_prev elevator (extract_floor element) queue with
+    match get_prev elevator (extract_floor element) backup queue with
       | (p, Some e) -> p +. elevator.travel_time (extract_floor e) (extract_floor element)
       | (p, None) -> p +. elevator.travel_time elevator.floor (extract_floor element)
   end
 
-let rec insert ?(priority) element queue = 
-  let prio = Option.value priority ~default:(calc_priority element queue) in
+let insert ?(priority) ?(backup=0.) element queue = 
+  let prio = Option.value priority ~default:(calc_priority element backup queue) in
 
-  let insert_value = match queue with
-    | Empty _ -> Node (prio, element, Empty prio, Empty prio, ref true)
-    | Node (p, e, left, right, _) ->
+  let rec insert_value ?(valid_node=ref true) prio element = function
+    | Empty -> Node (prio, element, Empty, Empty, valid_node)
+    | Node (p, e, left, right, valid) ->
       if prio <= p
-      then Node (prio, element, insert e right ~priority:p, left, ref true)
-      else Node (p, e, insert element right ~priority:prio, left, ref true)
+      then Node (prio, element, insert_value p e right ~valid_node:valid, left, valid_node)
+      else Node (p, e, insert_value prio element right ~valid_node:valid_node, left, valid)
   in
-  let new_queue = ref insert_value in
-  let elevator = extract_elevator element in
+  let new_queue = ref @@ insert_value prio element queue in
 
-  let reinsert_value event = new_queue := insert event !new_queue in
-  let rec invalidate_low_priority = function
-    | Empty _ -> ()
-    | Node (p, e, l, r, value) when p > prio && Option.equal (==) (extract_elevator e) elevator -> value := false; reinsert_value e; invalidate_low_priority l; invalidate_low_priority r
-    | Node (_, _, l, r, _) -> invalidate_low_priority l; invalidate_low_priority r
+  let invalidate_old_events elevator queue =
+    let invalid time event = Option.equal (==) (extract_elevator event) (Some elevator) && time > prio in
+    let reinsertion_queue = ref [] in
+    let rec internal = function
+      | Node (p, e, l, r, ({ contents = true } as valid)) when invalid p e -> valid := false; reinsertion_queue := (e :: !reinsertion_queue); internal l; internal r
+      | Node (_, _, l, r, _) -> internal l; internal r
+      | Empty -> ()
+    in
+    internal queue;
+    List.fold_left (fun acc event -> insert_value (calc_priority event backup acc) event acc) queue !reinsertion_queue
   in
-  if Option.is_some elevator then invalidate_low_priority !new_queue;
-  !new_queue
+  match extract_elevator element with
+    | Some elevator -> invalidate_old_events elevator !new_queue
+    | _ -> !new_queue

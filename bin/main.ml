@@ -3,12 +3,12 @@ open Elevator_simulator.PriorityQueue
 open Elevator_simulator.Elevator
 
 let top_floor = 20;;
-let simulation_time = 1000.;;
+let simulation_soft_stop_time = 600.;;
 let travel_time_fn per_floor per_stop initial final = per_floor *. (Int.to_float @@ Int.abs (final - initial)) +. if (final - initial) != 0 then per_stop else 0.;;
 
 Random.self_init ();;
 let random_floor () = Random.int (top_floor + 1);;
-let random_time () = Random.float simulation_time;;
+let random_time () = Random.float simulation_soft_stop_time;;
 let random_capacity () = Random.int (15 - 5) + 5;;
 let random_direction () = match Random.bool () with
   | true -> Up
@@ -40,11 +40,11 @@ let rec create_elevators = function
 ;;
 
 let rec create_calls = function
-  | [] -> PriorityQueue.Empty 0.
+  | [] -> PriorityQueue.Empty
   | p :: rem -> PriorityQueue.insert (Call (random_time(), p, random_floor ())) (create_calls rem) 
 ;;
 
-let people = create_people 2;;
+let people = create_people 3;;
 let elevators = create_elevators 1;;
 let () = run_simulation (create_calls people) elevators top_floor;;
 let () = print_string "Max total wait: "; print_float @@ max_total_wait people; print_endline "s";;

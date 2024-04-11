@@ -49,7 +49,7 @@ let elevator = {
 let people = [|{
     id = 1;
     destination = top_floor;
-    board_exit_duration = (Random.float 16.) +. 4.;
+    board_exit_duration = 4.;
     call_time = None;
     board_time = None;
     exit_time = None;
@@ -57,7 +57,7 @@ let people = [|{
 ;{
     id = 2;
     destination = top_floor;
-    board_exit_duration = (Random.float 16.) +. 4.;
+    board_exit_duration = 4.;
     call_time = None;
     board_time = None;
     exit_time = None;
@@ -65,7 +65,7 @@ let people = [|{
 ;{
     id = 3;
     destination = top_floor;
-    board_exit_duration = (Random.float 16.) +. 4.;
+    board_exit_duration = 4.;
     call_time = None;
     board_time = None;
     exit_time = None;
@@ -73,7 +73,7 @@ let people = [|{
 ;{
     id = 4;
     destination = top_floor;
-    board_exit_duration = (Random.float 16.) +. 4.;
+    board_exit_duration = 4.;
     call_time = None;
     board_time = None;
     exit_time = None;
@@ -81,7 +81,7 @@ let people = [|{
 ;{
     id = 5;
     destination = top_floor;
-    board_exit_duration = (Random.float 16.) +. 4.;
+    board_exit_duration = 4.;
     call_time = None;
     board_time = None;
     exit_time = None;
@@ -89,7 +89,7 @@ let people = [|{
 ;{
     id = 5;
     destination = top_floor;
-    board_exit_duration = (Random.float 16.) +. 4.;
+    board_exit_duration = 4.;
     call_time = None;
     board_time = None;
     exit_time = None;
@@ -97,7 +97,7 @@ let people = [|{
 ;{
     id = 7;
     destination = top_floor;
-    board_exit_duration = (Random.float 16.) +. 4.;
+    board_exit_duration = 4.;
     call_time = None;
     board_time = None;
     exit_time = None;
@@ -105,11 +105,15 @@ let people = [|{
 |]
 ;;
 
-let queue = Empty 0.
+let queue = Empty
   |> insert (Board (people.(0), elevator, 1))
-  |> insert (Board (people.(1), elevator, 2))
-  |> insert (Board (people.(2), elevator, 3))
-  |> insert (Board (people.(3), elevator, 3))
-  |> insert (Board (people.(4), elevator, 4))
-  |> insert (Board (people.(5), elevator, 6))
-  |> insert (Board (people.(6), elevator, 7))
+  |> insert (Board (people.(1), elevator, 10))
+  |> insert (Board (people.(3), elevator, 6))
+  |> insert (Board (people.(4), elevator, 3))
+;;
+
+let print_queue () = match queue with
+  | Empty -> print_endline "Empty"
+  | Node (_, e, _, _, v) when !v -> print_int @@ extract_floor e; print_newline ()
+  | Node _ -> print_endline "Invalid!"
+;;

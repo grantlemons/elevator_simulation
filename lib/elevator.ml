@@ -8,21 +8,21 @@ let dir_to_string = function
   | Up -> "Up"
   | Down -> "Down"
 ;;
-let distance_from_destination direction floor destination = match direction with
-  | Up -> destination - floor
-  | Down -> floor - destination
-;;
 
-let rec run_simulation ?(delayed_calls=[]) queue elevators top_floor =
-  let (time, rem_queue) = PriorityQueue.remove_min queue in
+let rec run_simulation ?(delayed_calls=[]) ?(time=0.) queue elevators top_floor =
+  let time = match queue with
+    | Node (p, _, _, _, _) -> p
+    | Empty -> time
+  in
+  let rem_queue = PriorityQueue.remove_min queue in
 
   let insert_event = function
-    | Board _ as event -> run_simulation (PriorityQueue.insert event rem_queue) elevators top_floor ~delayed_calls:delayed_calls
-    | Exit _ as event -> run_simulation (PriorityQueue.insert event rem_queue) elevators top_floor ~delayed_calls:delayed_calls
+    | Board _ as event -> run_simulation (PriorityQueue.insert ~backup:time event rem_queue) elevators top_floor ~delayed_calls:delayed_calls ~time:time
+    | Exit _ as event -> run_simulation (PriorityQueue.insert ~backup:time event rem_queue) elevators top_floor ~delayed_calls:delayed_calls ~time:time
     | _ -> ()
   in
 
-  let insert_delayed_call call = run_simulation rem_queue elevators top_floor ~delayed_calls:(call :: delayed_calls) in
+  let insert_delayed_call call = run_simulation rem_queue elevators top_floor ~delayed_calls:(call :: delayed_calls) ~time:time in
 
   let goto_floor elevator floor = 
     elevator.floor <- floor
@@ -34,6 +34,12 @@ let rec run_simulation ?(delayed_calls=[]) queue elevators top_floor =
         goto_floor elevator floor;
         elevator.current_headcount <- elevator.current_headcount + 1;
 
+        print_float time;
+        print_string " ";
+        print_int person.id;
+        print_string " Boarded! (";
+        print_int floor;
+        print_endline ")";
         person.board_time <- Some time;
 
         insert_event (Exit (person, elevator, person.destination))
@@ -43,6 +49,11 @@ let rec run_simulation ?(delayed_calls=[]) queue elevators top_floor =
         (* The elevator still goes to the floor, just no one boards and no destinations are added *)
         goto_floor elevator floor;
 
+        print_float time;
+        print_string " ";
+        print_int person.id;
+        print_endline " Delayed! (Capacity)";
+
         insert_delayed_call @@ Call (time, person, floor)
       end
   in
@@ -51,9 +62,15 @@ let rec run_simulation ?(delayed_calls=[]) queue elevators top_floor =
     goto_floor elevator floor;
     elevator.current_headcount <- elevator.current_headcount - 1;
 
+    print_float time;
+    print_string " ";
+    print_int person.id;
+    print_string " Exited! (";
+    print_int floor;
+    print_endline ")";
     person.exit_time <- Some time;
 
-    run_simulation rem_queue elevators top_floor ~delayed_calls:delayed_calls
+    run_simulation rem_queue elevators top_floor ~delayed_calls:delayed_calls ~time:time
   in
 
   let call_handler person floor = 
@@ -63,13 +80,25 @@ let rec run_simulation ?(delayed_calls=[]) queue elevators top_floor =
       | _ -> false
     in
 
+    print_float time;
+    print_string " ";
+    print_int person.id;
+    print_string " Called (";
+    print_int floor;
+    print_endline ")";
     person.call_time <- Some time;
 
     List.sort (fun e1 e2 -> Int.compare e1.current_headcount e2.current_headcount) elevators
     |> List.find_opt (fun e -> is_valid_call e floor)
     |> function
       | Some elevator -> insert_event @@ Board (person, elevator, floor)
-      | None -> insert_delayed_call @@ Call (time, person, floor)
+      | None -> begin
+        print_float time;
+        print_string " ";
+        print_int person.id;
+        print_endline " Delayed! (Directional)";
+        insert_delayed_call @@ Call (time, person, floor)
+      end
 
   in
 
@@ -79,8 +108,11 @@ let rec run_simulation ?(delayed_calls=[]) queue elevators top_floor =
       | Down -> elevator.direction <- Up; goto_floor elevator 0
     in
 
+    print_float time;
+    print_endline " Turned Around!";
+
     List.iter toggle_direction elevators;
-    run_simulation (List.fold_left (fun q call -> PriorityQueue.insert call q) queue delayed_calls) elevators top_floor
+    run_simulation (List.fold_left (fun q call -> PriorityQueue.insert ~backup:time call q) queue delayed_calls) elevators top_floor ~time:time
   in
 
   let event_handler = function
@@ -90,7 +122,7 @@ let rec run_simulation ?(delayed_calls=[]) queue elevators top_floor =
   in
 
   match (queue, delayed_calls) with
-  | (Empty _, []) -> ()
-  | (Empty _, _) -> toggle_handler ()
+  | (Empty, []) -> ()
+  | (Empty, _) -> toggle_handler ()
   | (Node(_, event, _, _, _), _) -> event_handler event
 ;;
