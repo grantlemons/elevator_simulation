@@ -5,42 +5,6 @@ type pqueue =
   | Empty
   | Node of priority * event * pqueue * pqueue * bool ref
 
-let rec count = function
-  | Node (_, _, left, right, { contents = true }) -> 1 + count left + count right
-  | Node (_, _, left, right, _) -> 0 + count left + count right
-  | _ -> 0
-
-let leaf_valid = function
-  | Node (_, _, l, r, { contents = true }) when count l + count r == 0 -> true
-  | _ -> false
-
-let rec count = function
-  | Node (_, _, left, right, { contents = true }) -> 1 + count left + count right
-  | Node (_, _, left, right, _) -> 0 + count left + count right
-  | _ -> 0
-
-let max_pair pair1 pair2 = match (pair1, pair2) with
-  | ((_, Some _), (_, None)) -> pair1
-  | ((_, None), (_, Some _)) -> pair2
-  | ((p1, _), (p2, _)) when p1 > p2 -> pair1
-  | ((p1, _), (p2, _)) when p2 > p1 -> pair2
-  | _ -> pair1
-
-let floor_occurs_sooner direction floor other = match direction with
-  | Up -> floor < other
-  | Down -> floor > other
-;;
-
-let get_prev elevator floor backup queue = 
-  let elevator_match event = Option.equal (==) (extract_elevator event) (Some elevator) in
-  let valid_node event = elevator_match event && floor_occurs_sooner elevator.direction (extract_floor event) floor in
-  let rec internal = function
-      | Node (p, e, l, r, { contents = true }) when valid_node e -> max_pair (p, Some e) @@ max_pair (internal l) (internal r)
-      | Node (_, _, l, r, _) -> max_pair (internal l) (internal r)
-      | Empty -> (backup, None)
-  in
-  internal queue
-
 let rec remove_min queue =
   let rec remove = function
     | Empty as e -> e
@@ -57,13 +21,42 @@ let rec remove_min queue =
     | Node (_, _, _, _, { contents = false }) as node -> remove_min node
     | Node (_, _, _, _, { contents = true }) as node -> node
 
+let max_pair pair1 pair2 = match (pair1, pair2) with
+  | ((_, Some _), (_, None)) -> pair1
+  | ((_, None), (_, Some _)) -> pair2
+  | ((p1, _), (p2, _)) when p1 > p2 -> pair1
+  | ((p1, _), (p2, _)) when p2 > p1 -> pair2
+  | _ -> pair1
+
+let floor_occurs_sooner f1 f2 = function
+  | Up -> f1 < f2
+  | Down -> f1 > f2
+
+let get_prev elevator floor backup queue = 
+  let valid event = Option.equal (==) (extract_elevator event) (Some elevator)
+    && floor_occurs_sooner (extract_floor event) floor elevator.direction
+  in
+  let rec internal = function
+      | Node (p, e, l, r, { contents = true }) when valid e -> max_pair (p, Some e) @@ max_pair (internal l) (internal r)
+      | Node (_, _, l, r, _) -> max_pair (internal l) (internal r)
+      | Empty -> (backup, None)
+  in
+  internal queue
+
 let calc_priority element backup queue = match element with
   | Call (time, _, _) -> time
   | _ -> begin
     let elevator = Option.get @@ extract_elevator element in
-    match get_prev elevator (extract_floor element) backup queue with
-      | (p, Some e) -> p +. elevator.travel_time (extract_floor e) (extract_floor element)
-      | (p, None) -> p +. elevator.travel_time elevator.floor (extract_floor element)
+    begin
+      match get_prev elevator (extract_floor element) backup queue with
+        | (p, Some e) -> p +. elevator.travel_time (extract_floor e) (extract_floor element)
+        | (p, None) -> p +. elevator.travel_time elevator.floor (extract_floor element)
+    end
+    +. match element with
+      | Board (person, _, _) -> person.board_exit_duration
+      | Exit (person, _, _) -> person.board_exit_duration
+      | _ -> 0.
+
   end
 
 let insert ?(prio_override) ?(backup=0.) element queue = 

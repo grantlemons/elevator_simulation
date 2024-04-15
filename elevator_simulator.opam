@@ -10,6 +10,7 @@ tags: ["topics" "simulation" "des"]
 depends: [
   "ocaml"
   "dune" {>= "3.14"}
+  "alcotest" {with-test}
   "odoc" {with-doc}
 ]
 build: [

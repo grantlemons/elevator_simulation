@@ -5,6 +5,10 @@ let max_call_wait people = List.fold_left (fun acc x -> max acc (Option.get x.bo
 let max_exit_wait people = List.fold_left (fun acc x -> max acc (Option.get x.exit_time -. Option.get x.board_time)) 0. people;;
 let max_total_wait people = List.fold_left (fun acc x -> max acc (Option.get x.exit_time -. Option.get x.call_time)) 0. people;;
 
+let floor_occurs_sooner_or_eq f1 f2 = function
+  | Up -> f1 <= f2
+  | Down -> f1 >= f2
+
 let rec run_simulation ?(delayed_calls=[]) ?(time=0.) queue elevators top_floor =
   let time = match queue with
     | Node (p, _, _, _, _) -> p
@@ -18,10 +22,19 @@ let rec run_simulation ?(delayed_calls=[]) ?(time=0.) queue elevators top_floor 
     | _ -> ()
   in
 
-  let insert_delayed_call call = run_simulation (List.fold_left (fun acc elevator -> PriorityQueue.insert ~backup:time (ChangeDirection (elevator, dir_opposite elevator.direction, dir_eol top_floor elevator.direction)) acc) rem_queue elevators) elevators top_floor ~delayed_calls:(call :: delayed_calls) ~time:time in
+  let insert_delayed_call call =
+    let change_directions_queue () = begin
+      let eol elevator = dir_eol top_floor elevator.direction in
+      let new_direction elevator = dir_opposite elevator.direction in
+      List.fold_left (fun acc elevator -> PriorityQueue.insert ~backup:time (ChangeDirection (elevator, new_direction elevator, eol elevator)) acc) rem_queue elevators
+    end in
+    run_simulation (change_directions_queue ()) elevators top_floor ~delayed_calls:(call :: delayed_calls) ~time:time
+  in
 
   let goto_floor elevator floor = 
-    elevator.floor <- floor
+    if (floor_occurs_sooner_or_eq elevator.floor floor elevator.direction)
+    then elevator.floor <- floor
+    else (print_string "GOTO WRONG DIRECTION! ("; print_int elevator.floor; print_string ") -> ("; print_int floor; print_string ") <"; print_string @@ dir_to_string elevator.direction; print_endline ">"; elevator.floor <- floor)
   in
 
   let board_handler person elevator floor = if elevator.current_headcount < elevator.capacity
@@ -98,11 +111,12 @@ let rec run_simulation ?(delayed_calls=[]) ?(time=0.) queue elevators top_floor 
         print_endline " Delayed! (Directional)";
         insert_delayed_call @@ Call (time, person, floor)
       end
-
   in
 
   let change_dir_handler elevator direction floor = if direction != elevator.direction then
     begin
+      goto_floor elevator floor;
+
       print_float time;
       print_string " Turned Around! <";
       print_string @@ dir_to_string elevator.direction;
@@ -111,7 +125,6 @@ let rec run_simulation ?(delayed_calls=[]) ?(time=0.) queue elevators top_floor 
       print_string @@ dir_to_string elevator.direction;
       print_endline ">";
 
-      goto_floor elevator floor;
       run_simulation (List.fold_left (fun q call -> PriorityQueue.insert call q ~prio_override:time) rem_queue delayed_calls) elevators top_floor ~time:time
     end else
       run_simulation rem_queue elevators top_floor
@@ -126,6 +139,6 @@ let rec run_simulation ?(delayed_calls=[]) ?(time=0.) queue elevators top_floor 
 
   match (queue, delayed_calls) with
   | (Empty, []) -> ()
-  | (Empty, _) -> ()
+  | (Empty, _) -> print_endline "Uh Oh"
   | (Node(_, event, _, _, _), _) -> event_handler event
 ;;

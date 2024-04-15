@@ -1,6 +1,7 @@
 open Elevator_simulator
 open Elevator_simulator.PriorityQueue
 open Elevator_simulator.Elevator
+open Elevator_simulator.Types
 
 let top_floor = 20;;
 let simulation_time = 1000.;;
@@ -128,6 +129,6 @@ let expected_order = [1; 3; 6; 10];;
 let prev = ref 0.;;
 let expected_times = 
   windows expected_order
-  |> List.map (fun (a, b) -> prev := !prev +. travel_time_fn 3. 10. a b; !prev)
+  |> List.map (fun (a, b) -> prev := !prev +. travel_time_fn 3. 10. a b +. 4.; !prev)
 ;;
 check_queue expected_order expected_times queue;;

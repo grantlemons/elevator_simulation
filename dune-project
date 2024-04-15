@@ -17,6 +17,6 @@
  (name elevator_simulator)
  (synopsis "Discrete Event Simulation for a system of elevators.")
  (description "Discrete Event Simulation for a system of elevators. Created for the purpose of learning DES, not as an actual product.")
- (depends ocaml dune)
+ (depends ocaml dune (alcotest :with-test))
  (tags
   (topics "simulation" "des")))
